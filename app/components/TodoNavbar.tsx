@@ -15,6 +15,7 @@ interface Todo {
   id: string;
   text: string;
   completed: boolean;
+  selected?: boolean;
 }
 
 interface Props {
@@ -26,6 +27,7 @@ export default function TodoNavbar({ phoneFlipped }: Props) {
   const [newTodo, setNewTodo] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const slideAnim = useState(new Animated.Value(1000))[0];
+  const [selectedTodo, setSelectedTodo] = useState<string | null>(null);
 
   useEffect(() => {
     if (phoneFlipped && isOpen) {
@@ -53,6 +55,7 @@ export default function TodoNavbar({ phoneFlipped }: Props) {
   };
 
   const toggleTodo = (id: string) => {
+    setSelectedTodo(selectedTodo === id ? null : id);
     const newTodos = todos.map(todo => 
       todo.id === id ? { ...todo, completed: !todo.completed } : todo
     );
@@ -62,6 +65,16 @@ export default function TodoNavbar({ phoneFlipped }: Props) {
   const deleteTodo = (id: string) => {
     const newTodos = todos.filter(todo => todo.id !== id);
     setTodos(newTodos);
+  };
+
+  const handleOutsideClick = (event: any) => {
+    if (event.target === event.currentTarget) {
+      setIsOpen(false);
+      Animated.spring(slideAnim, {
+        toValue: 1000,
+        useNativeDriver: true,
+      }).start();
+    }
   };
 
   return (
@@ -77,66 +90,93 @@ export default function TodoNavbar({ phoneFlipped }: Props) {
         />
       </TouchableOpacity>
 
-      <Animated.View 
-        style={[
-          styles.navbar,
-          { transform: [{ translateY: slideAnim }] }
-        ]}
-      >
-        <View style={styles.todoContainer}>
-          <Text style={styles.todoTitle}>待办事项</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={newTodo}
-              onChangeText={setNewTodo}
-              placeholder="添加新任务..."
-              placeholderTextColor="#999"
-            />
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={addTodo}
-            >
-              <MaterialIcons name="add" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.todoList}>
-            {todos.map(todo => (
-              <TouchableOpacity
-                key={todo.id}
-                style={[styles.todoItem, todo.completed && styles.todoCompleted]}
-                onPress={() => toggleTodo(todo.id)}
-              >
-                <MaterialIcons
-                  name={todo.completed ? "check-box" : "check-box-outline-blank"}
-                  size={24}
-                  color={todo.completed ? "#673AB7" : "#666"}
+      {isOpen && (
+        <TouchableOpacity 
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={handleOutsideClick}
+        >
+          <Animated.View 
+            style={[
+              styles.navbar,
+              { transform: [{ translateY: slideAnim }] }
+            ]}
+          >
+            <View style={styles.todoContainer}>
+              <Text style={styles.todoTitle}>待办事项</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  value={newTodo}
+                  onChangeText={setNewTodo}
+                  placeholder="添加新任务..."
+                  placeholderTextColor="#999"
                 />
-                <Text style={[styles.todoText, todo.completed && styles.todoTextCompleted]}>
-                  {todo.text}
-                </Text>
                 <TouchableOpacity 
-                  style={styles.deleteButton}
-                  onPress={() => deleteTodo(todo.id)}
+                  style={styles.addButton}
+                  onPress={addTodo}
                 >
-                  <MaterialIcons name="delete" size={20} color="#FF5252" />
+                  <MaterialIcons name="add" size={24} color="white" />
                 </TouchableOpacity>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </Animated.View>
+              </View>
+              
+              <ScrollView 
+                style={styles.todoList}
+                showsVerticalScrollIndicator={true}
+              >
+                {todos.map(todo => (
+                  <TouchableOpacity
+                    key={todo.id}
+                    style={[
+                      styles.todoItem, 
+                      todo.completed && styles.todoCompleted,
+                      selectedTodo === todo.id && styles.todoSelected
+                    ]}
+                    onPress={() => toggleTodo(todo.id)}
+                  >
+                    <MaterialIcons
+                      name={todo.completed ? "check-box" : "check-box-outline-blank"}
+                      size={24}
+                      color={todo.completed ? "#673AB7" : "#666"}
+                    />
+                    <Text style={[
+                      styles.todoText, 
+                      todo.completed && styles.todoTextCompleted
+                    ]}>
+                      {todo.text}
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => deleteTodo(todo.id)}
+                    >
+                      <MaterialIcons name="delete" size={20} color="#FF5252" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </Animated.View>
+        </TouchableOpacity>
+      )}
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 999,
+  },
   navbar: {
     position: 'absolute',
     bottom: 50,
     left: '10%',
-    height: '50%',
+    height: '40%',
     width: '80%',
     backgroundColor: '#f5f5f5',
     zIndex: 1000,
@@ -201,6 +241,7 @@ const styles = StyleSheet.create({
   todoList: {
     flex: 1,
     paddingHorizontal: 5,
+    maxHeight: '70%',
   },
   todoItem: {
     flexDirection: 'row',
@@ -230,5 +271,10 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 8,
+  },
+  todoSelected: {
+    backgroundColor: '#E8EAF6',
+    borderColor: '#673AB7',
+    borderWidth: 1,
   },
 });
